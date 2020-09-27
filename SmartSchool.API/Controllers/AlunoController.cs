@@ -1,4 +1,6 @@
 ﻿using Microsoft.AspNetCore.Mvc;
+using Microsoft.EntityFrameworkCore;
+using SmartSchool.API.Data;
 using SmartSchool.WebAPI.Models;
 using System.Collections.Generic;
 using System.Linq;
@@ -10,45 +12,25 @@ namespace SmartSchool.WebAPI.Controllers
     [Route("api/[controller]")]
     public class AlunoController : ControllerBase
     {
+        private readonly SmartContext _context;
 
-        public List<Models.Aluno> Alunos = new List<Aluno>(){
-            new Aluno(){
-                Id = 1,
-                Nome = "Dalmera",
-                Sobrenome = "Almeira",
-                Telefone = "1234566777"
-            },
-            new Aluno(){
-                Id = 2,
-                Nome = "Marta",
-                Sobrenome = "Kent",
-                Telefone = "2352342544"
-            },
-            new Aluno(){
-                Id = 3,
-                Nome = "Laura",
-                Sobrenome = "Maria",
-                Telefone = "4567456778"
-            }
-        };
-
-        public AlunoController()
+        public AlunoController(SmartContext context)
         {
-
+            _context = context;
         }
 
         [HttpGet]
         public IActionResult Get()
         {
-            return Ok(Alunos);
+            return Ok(_context.Alunos);
         }
 
         // api/aluno/1
         // Esta sintaxe funciona [HttpGet("{id:int}")]. Mas a maioria utiliza essa outra sintaxe abaixo:
-        [HttpGet("byId")]
+        [HttpGet("byId/{id}")]
         public IActionResult GetById(int id)
         {
-            var aluno = Alunos.FirstOrDefault(a => a.Id == id);
+            var aluno = _context.Alunos.FirstOrDefault(a => a.Id == id);
             if (aluno == null) return BadRequest("O aluno não foi encontrado");
             return Ok(aluno);
         }
@@ -57,7 +39,7 @@ namespace SmartSchool.WebAPI.Controllers
         [HttpGet("ByName")]
         public IActionResult GetByName(string nome, string sobrenome)
         {
-            var aluno = Alunos.FirstOrDefault(a => a.Nome.Contains(nome) && a.Sobrenome.Contains(sobrenome));
+            var aluno = _context.Alunos.FirstOrDefault(a => a.Nome.Contains(nome) && a.Sobrenome.Contains(sobrenome));
             if (aluno == null) return BadRequest("O aluno não foi encontrado");
             return Ok(aluno);
         }
@@ -66,25 +48,42 @@ namespace SmartSchool.WebAPI.Controllers
         [HttpPost]
         public IActionResult Post(Aluno aluno)
         {
+            _context.Add(aluno);
+            _context.SaveChanges();
             return Ok(aluno);
         }
 
         [HttpPut("{id}")]
         public IActionResult Put(int id, Aluno aluno)
         {
+            // Esta função AsNoTracking() servirá para que não seja travado a alteração do objeto que foi buscado no banco.
+            // Por exemplo, se não tiver essa função e eu tentar alterar (fazer um Update no banco) vai dar um erro dizendo
+            // que por padrão assim que você chamou o aluno pelo contexto, ele bloqueia a alteração dele no banco
+            var alu = _context.Alunos.AsNoTracking(). FirstOrDefault(a => a.Id == id);
+            if (alu == null) return BadRequest("Aluno não encontrado");
+            _context.Update(aluno);
+            _context.SaveChanges();
             return Ok(aluno);
         }
 
         [HttpPatch("{id}")]
         public IActionResult Patch(int id, Aluno aluno)
         {
+            var alu = _context.Alunos.AsNoTracking().FirstOrDefault(a => a.Id == id);
+            if (alu == null) return BadRequest("Aluno não encontrado");
+            _context.Update(aluno);
+            _context.SaveChanges();
             return Ok(aluno);
         }
 
         [HttpDelete("{id}")]
         public IActionResult Delete(int id)
         {
-            return Ok();
+            var aluno = _context.Alunos.FirstOrDefault(a => a.Id == id);
+            if (aluno == null) return BadRequest("Aluno não encontrado");
+            _context.Remove(aluno);
+            _context.SaveChanges();
+            return Ok(aluno);
         }
 
     }
